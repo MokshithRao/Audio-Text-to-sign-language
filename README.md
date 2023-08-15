@@ -30,4 +30,8 @@ These instructions will get you download the project and running on your local m
 6. Speech is going to processed and respective animated outputs are shown accordingly and it also support entered text manually.
 
 
+![image](https://github.com/MokshithRao/Audio-Text-to-sign-language/assets/111580947/afaaa822-9cb5-4de9-85f8-97dfef6bceab)
+
+
+
 
