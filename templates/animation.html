@@ -8,7 +8,9 @@
 	<form id="textForm" action="" method="post" align="left">
 		{% csrf_token %}
 		<input type="text" name="sen" class="mytext" id="speechToText" placeholder="">
-		<button type="button" name="button" class="mic" onclick="record()"><img src="{% static 'mic3.png' %}" height="32px" width="38px" /></button>
+		<button type="button" id="micToggle" class="mic" style="background:none;border:none;outline:none;">
+			<img id="micIcon" src="{% static 'mic3.png' %}" height="32px" width="38px" alt="Mic" />
+		</button>
 		&nbsp&nbsp&nbsp&nbsp
 		<input type="submit" name="submit" class="submit">
 	</form>
@@ -43,21 +45,59 @@
 </div>
 
 <script>
-// webkitSpeechRecognition api for speech to text conversion
-function record(){
-	var recognition = new webkitSpeechRecognition();
-	recognition.lang='en-IN';
-	recognition.onresult = function(event){
-		document.getElementById('speechToText').value = event.results[0][0].transcript;
+// Real-time speech recognition with toggle mic and auto-submit
+let recognition;
+let recognizing = false;
+const micToggle = document.getElementById('micToggle');
+const micIcon = document.getElementById('micIcon');
+const speechInput = document.getElementById('speechToText');
+const form = document.getElementById('textForm');
+
+function setMicActive(active) {
+	if (active) {
+		micIcon.style.filter = 'invert(24%) sepia(98%) saturate(7492%) hue-rotate(357deg) brightness(99%) contrast(119%)'; // red tint
+	} else {
+		micIcon.style.filter = '';
 	}
-	recognition.start();
 }
 
+micToggle.addEventListener('click', function(e) {
+	e.preventDefault();
+	if (!recognition) {
+		recognition = new webkitSpeechRecognition();
+		recognition.lang = 'en-IN';
+		recognition.continuous = true;
+		recognition.interimResults = true;
+		recognition.onresult = function(event) {
+			let transcript = '';
+			for (let i = event.resultIndex; i < event.results.length; ++i) {
+				transcript += event.results[i][0].transcript;
+			}
+			speechInput.value = transcript;
+		};
+		recognition.onstart = function() {
+			recognizing = true;
+			setMicActive(true);
+		};
+		recognition.onend = function() {
+			setMicActive(false);
+			recognizing = false;
+			if (speechInput.value.trim() !== '') {
+				form.dispatchEvent(new Event('submit', {cancelable: true}));
+			}
+		};
+	}
+	if (!recognizing) {
+		recognition.start();
+	} else {
+		recognition.stop();
+	}
+});
+
 // AJAX form submission for live preview
-const form = document.getElementById('textForm');
 form.addEventListener('submit', function(e) {
 	e.preventDefault();
-	const text = document.getElementById('speechToText').value;
+	const text = speechInput.value;
 	const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
 	fetch(window.location.pathname, {
 		method: 'POST',
@@ -70,20 +110,19 @@ form.addEventListener('submit', function(e) {
 	})
 	.then(response => response.json())
 	.then(data => {
-		// Update entered text
 		document.getElementById('enteredText').textContent = data.text;
-		// Update keywords list
 		const list = document.getElementById('list');
 		list.innerHTML = '';
-		data.words.forEach((word, i) => {
+		// Only add words that are alphanumeric (no punctuation) to both display and animation
+		const validWords = data.words.filter(word => /^[a-zA-Z0-9]+$/.test(word));
+		validWords.forEach((word, i) => {
 			const li = document.createElement('li');
 			li.id = i;
 			li.style.marginRight = '8px';
 			li.textContent = word;
 			list.appendChild(li);
 		});
-		// Optionally, auto-play animation
-		if (data.words.length > 0) {
+		if (validWords.length > 0) {
 			play();
 		}
 	});
