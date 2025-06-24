@@ -8,6 +8,7 @@ from nltk.stem import WordNetLemmatizer
 import nltk
 from django.contrib.staticfiles import finders
 from django.contrib.auth.decorators import login_required
+from .forms import CustomUserCreationForm
 
 def home_view(request):
 	return render(request,'home.html')
@@ -96,16 +97,15 @@ def animation_view(request):
 
 
 def signup_view(request):
-	if request.method == 'POST':
-		form = UserCreationForm(request.POST)
-		if form.is_valid():
-			user = form.save()
-			login(request,user)
-			# log the user in
-			return redirect('animation')
-	else:
-		form = UserCreationForm()
-	return render(request,'signup.html',{'form':form})
+    if request.method == 'POST':
+        form = CustomUserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request,user)
+            return redirect('animation')
+    else:
+        form = CustomUserCreationForm()
+    return render(request,'signup.html',{'form':form})
 
 
 
